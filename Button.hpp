@@ -18,7 +18,7 @@ Button::Button(byte pin)
 bool Button::isClicked()
 {
   bool res = true;
-  for (int i = 0; i < 200; ++i)
+  for (int i = 0; i < 100; ++i)
   {
     res = res && (digitalRead(pin_) == HIGH);
     delay(10);

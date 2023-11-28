@@ -1,9 +1,3 @@
-#define OLED_SOFT_BUFFER_64
-#include <GyverOLED.h>
-#include <charMap.h>
-#include <icons_7x7.h>
-#include <icons_8x8.h>
-
 #include "Stoplight.hpp"
 #include "Button.hpp"
 #include "Barrier.hpp"
@@ -21,20 +15,24 @@ public:
   MainController();
   void loop();
 
-  GyverOLED<SSH1106_128x64> oleg;
 private:
   State state_;
-  Button button_;
-  Stoplight carStoplight_;
-  Stoplight humanStoplight_;
-  Barrier barrier_;
-  Zummer zummer_;
-  void wait_for_button();
-  void timer();
-  void printNumber(int num);
+  Button button_; // Katya
+  Button rubila_; // Misha
+  Stoplight carStoplight_; // Danya
+  Stoplight humanStoplight_; // Gena
+  Barrier barrier_; // Sanya
+  Zummer zummer_; // Sanya
+  bool isShutdown = false;
+  void wait_for_button(); // Katya
+  void timer(); // Danya Gena
+  void rubilaClicked(); // Sanya
+  void shutdown(); // Misha
+  void restart(); // Misha
 };
 
 const byte buttonPin = 26;
+const byte rubilaPin = 28;
 const byte carStoplightGreen = 2;
 const byte carStoplightYellow = 3;
 const byte carStoplightRed = 4;
@@ -58,16 +56,25 @@ MainController::MainController() :
   }),
   state_(State::WAIT_FOR_BUTTON),
   barrier_(Barrier(barrierPin)),
-  zummer_(Zummer(zummerPin))
+  zummer_(Zummer(zummerPin)),
+  rubila_(Button(rubilaPin))
 {
   carStoplight_.setColor(Color::GREEN);
   barrier_.up();
-  printNumber(5);
   delay(100);
 }
 
 void MainController::loop()
 {
+  auto rubilaClickedVal = rubila_.isClicked();
+  Serial.println("rubila: " + String(rubilaClickedVal));
+  if (rubilaClickedVal)
+  {
+    rubilaClicked();
+    return;
+  }
+  if (isShutdown)
+    return;
   switch(state_)
   {
     case State::WAIT_FOR_BUTTON:
@@ -82,10 +89,11 @@ void MainController::loop()
 
 void MainController::wait_for_button()
 {
+  barrier_.up();
   carStoplight_.setColor(Color::GREEN);
   humanStoplight_.setColor(Color::RED);
   auto isClicked = button_.isClicked();
-  Serial.println(isClicked);
+  Serial.println("btn: " + String(isClicked));
   if (isClicked)
   {
     Serial.println("Button is clicked");
@@ -135,10 +143,24 @@ void MainController::timer()
   }
 }
 
-void MainController::printNumber(int num)
+void MainController::rubilaClicked()
 {
-  oleg.clear();
-  oleg.home();
-  oleg.print(String(num));
-  oleg.update();
+  if (isShutdown)
+    restart();
+  else
+    shutdown();  
+}
+
+void MainController::shutdown()
+{
+  isShutdown = true;
+  barrier_.up();
+  carStoplight_.setColor(Color::NONE);
+  humanStoplight_.setColor(Color::NONE);
+}
+
+void MainController::restart()
+{
+  state_ = State::WAIT_FOR_BUTTON;
+  isShutdown = false;
 }
